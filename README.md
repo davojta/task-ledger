@@ -58,6 +58,46 @@ ledger status sync review --note "Ready for validation"
 ledger status sync done
 ```
 
+## Manual Walkthrough
+
+Try the CLI against a throwaway ledger without installing:
+
+```bash
+cargo build
+export PATH="$PWD/target/debug:$PATH"
+export LEDGER_ROOT=$(mktemp -d)          # use this ledger regardless of cwd
+touch "$LEDGER_ROOT/ledger.toml"
+
+# Create a task; files land in $LEDGER_ROOT/ingest/<today>-sync/
+ledger new ingest/sync --title "Sync downstream data"
+cp "$LEDGER_ROOT"/ingest/*-sync/task.md /tmp/before.md
+
+# Move it through the lifecycle
+ledger status sync active
+ledger status sync review --note "Ready for validation"
+ledger mv sync done                      # `mv` is an alias of `status`
+ledger status sync active; echo "exit $?"  # rejected: exit 4, hints --reopen
+ledger status sync backlog --reopen
+
+# Inspect
+ledger ls --all                          # table incl. done/dropped
+ledger show sync --json                  # full record + artifacts
+ledger check                             # validate all task.md files
+ledger schema | head                     # JSON Schema of --json output
+
+# What changed in task.md: only status/date lines and appended history
+diff /tmp/before.md "$LEDGER_ROOT"/ingest/*-sync/task.md
+```
+
+What to expect:
+
+- A new task starts at status `backlog` and derived stage `input`; the stage advances as you fill in `proposal.md` and `design.md`.
+- Errors go to stderr; with `--json` they are `{"error":{"code":...,"message":...}}` and the exit code tells the category.
+- Hand edits survive: add a `# comment` or an unknown key to the frontmatter, change status, and both are kept.
+- `ldg` is identical to `ledger`.
+
+Use a fixed date for reproducible output: `LEDGER_TODAY=2026-10-04 ledger new ...`. Without `LEDGER_ROOT`, the root is found by walking up from the current directory to `ledger.toml`.
+
 ## Task Lifecycle
 
 ```
