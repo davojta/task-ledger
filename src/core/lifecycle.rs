@@ -92,8 +92,8 @@ pub fn check_transition(from: Status, to: Status, opts: TransitionOpts) -> Resul
     if opts.force || allowed.contains(&to) {
         return Ok(());
     }
-    let hint = if from.is_terminal() && to == Status::Backlog {
-        " (use --reopen)"
+    let hint = if from.is_terminal() && !opts.reopen {
+        " (use --reopen to move to backlog)"
     } else {
         ""
     };
@@ -173,6 +173,15 @@ mod tests {
         assert_eq!(
             err.to_string(),
             "cannot change status from idea to done; allowed: backlog, dropped"
+        );
+    }
+
+    #[test]
+    fn terminal_status_hints_reopen() {
+        let err = check_transition(Done, Active, plain()).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "cannot change status from done to active (use --reopen to move to backlog); allowed: none"
         );
     }
 

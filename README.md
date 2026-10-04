@@ -41,7 +41,7 @@ Task layout:
 │       └── task.md        # template for `ledger new`
 ```
 
-Templates: `ledger new --template <name>` copies every `.md` file from `_templates/<name>/` (must include `task.md`) and replaces `{{id}}`, `{{title}}`, `{{project}}`, `{{date}}`, `{{status}}`. Without `_templates/default/`, built-in `task.md`, `input.md`, `proposal.md` and `design.md` are used.
+Templates: `ledger new --template <name>` copies every `.md` file from `_templates/<name>/` (must include `task.md`) and replaces `{{id}}`, `{{title}}`, `{{project}}`, `{{date}}`, `{{status}}`. Without `_templates/default/`, built-in `task.md`, `input.md`, `proposal.md` and `design.md` are used; `proposal.md` and `design.md` start empty, so a new task's derived stage is `input`.
 
 ## Example: New Task
 

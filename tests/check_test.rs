@@ -29,7 +29,7 @@ fn clean_ledger_exits_0_with_ok_message() {
         .arg("check")
         .assert()
         .code(0)
-        .stdout("ok: 1 tasks checked, no problems\n");
+        .stdout("ok: 1 task checked, no problems\n");
 }
 
 #[test]

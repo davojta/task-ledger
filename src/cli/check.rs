@@ -11,7 +11,8 @@ pub fn run(args: &CheckArgs, json: bool, env: &Env) -> Result<u8> {
         output::print_json(&output::check_envelope(&problems));
     } else if problems.is_empty() {
         let checked = scan::task_dirs(&ledger.root)?.len();
-        println!("ok: {checked} tasks checked, no problems");
+        let noun = if checked == 1 { "task" } else { "tasks" };
+        println!("ok: {checked} {noun} checked, no problems");
     } else {
         problems.iter().for_each(|p| println!("{}", line(p)));
     }

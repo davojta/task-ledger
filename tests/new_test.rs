@@ -37,6 +37,23 @@ fn creates_dated_task_with_builtin_files() {
 }
 
 #[test]
+fn new_task_starts_at_input_stage() {
+    let f = Fixture::new();
+    new_ok(&f, &["ingest/cdc-backfill"]);
+    let out = f
+        .cmd()
+        .args(["show", "cdc-backfill", "--json"])
+        .output()
+        .unwrap();
+    let task = &stdout_json(&out.stdout)["task"];
+    assert_eq!(task["stage"], "input");
+    assert_eq!(
+        task["artifacts"],
+        serde_json::json!({"input": true, "proposal": false, "design": false})
+    );
+}
+
+#[test]
 fn human_output_names_id_and_path() {
     let f = Fixture::new();
     let out = f
