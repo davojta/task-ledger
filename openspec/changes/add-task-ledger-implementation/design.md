@@ -42,7 +42,9 @@ src/
 `core` never prints and never exits; it returns `Result<T, LedgerError>`. `cli` maps errors to stderr/JSON and exit codes. Two `[[bin]]` targets (`ledger` → `src/main.rs`, `ldg` → `src/bin/ldg.rs`) avoid Cargo's "file in multiple targets" warning. clap `name = "ledger"` so help reads the same from both.
 Alternative: one binary + symlink install step — rejected, `cargo install` would not create it.
 
-### YAML reading: `serde_norway` → `serde_json::Value`
+### YAML reading: `serde-saphyr` → `serde_json::Value`
+
+> Implementation note: `serde_norway` had no release since 2024-12, so the fallback `serde-saphyr` (1.3, 2026-09) is used.
 Frontmatter is split by hand (first line `---`, up to next line equal to `---`). The YAML text is parsed with `serde_norway` into `serde_json::Value`-compatible data (via `serde_norway::from_str::<serde_json::Value>`), then validated into a typed `Record` for known keys while the full map is kept for output (unknown keys exposed per cli-output-contract). Dates are kept as strings and validated with `jiff::civil::Date::from_str`.
 Alternatives: `serde_yaml` (deprecated), `serde_yml` (RUSTSEC-2025-0068), `serde-saphyr` (fine, newer; keep as fallback if `serde_norway` proves inactive at implementation time — task 1.2 checks).
 
