@@ -3,7 +3,7 @@
 help:
 	@echo "task-ledger - Available Commands:"
 	@echo "  make build                  - Build the project"
-	@echo "  make run-main               - Run the CLI hello command"
+	@echo "  make run-main               - Run the CLI help"
 	@echo "  make run-test               - Run unit tests"
 	@echo "  make run-integration-tests  - Run integration tests"
 	@echo "  make run-all-tests          - Run all tests"
@@ -16,7 +16,7 @@ build:
 	cargo build
 
 run-main:
-	cargo run -- hello
+	cargo run --bin ledger -- --help
 
 run-test:
 	cargo test --lib
