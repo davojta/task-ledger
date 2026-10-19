@@ -21,13 +21,13 @@ pub struct Problem {
 /// `IdMismatch`, `ProjectMismatch` and a missing `schema` key (surgical,
 /// atomic) and mark them `fixed`.
 pub fn check(ledger: &Ledger, fix: bool) -> Result<Vec<Problem>> {
-    let mut problems = scan::task_dirs(&ledger.root)?
+    let mut problems = scan::task_dirs(ledger)?
         .iter()
         .map(|task| check_task(task, fix))
         .collect::<Result<Vec<_>>>()?
         .into_iter()
         .flatten()
-        .chain(scan::orphan_dirs(&ledger.root)?.iter().map(orphan_problem))
+        .chain(scan::orphan_dirs(ledger)?.iter().map(orphan_problem))
         .collect::<Vec<_>>();
     problems.sort_by(|a, b| (&a.id, a.code).cmp(&(&b.id, b.code)));
     Ok(problems)

@@ -1,14 +1,16 @@
 use std::path::{Path, PathBuf};
 
 use crate::core::error::{LedgerError, Result};
+use crate::core::root::Ledger;
 
 pub const TASK_FILE: &str = "task.md";
 pub const ARTIFACT_NAMES: [&str; 3] = ["input", "proposal", "design"];
 
-/// A `<root>/<project>/<slug>/` directory.
+/// A task directory: `<root>/<project>/<slug>/`, or `<root>/<slug>/` in a
+/// flat ledger (`project` set in `ledger.toml`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TaskDir {
-    /// `<project>/<slug>`
+    /// `<project>/<slug>`, or `<slug>` in a flat ledger
     pub id: String,
     pub project: String,
     pub slug: String,
@@ -53,16 +55,20 @@ fn subdirs(dir: &Path) -> Result<Vec<(String, PathBuf)>> {
         .collect())
 }
 
-/// Every `<project>/<slug>/` directory, sorted by id.
-fn candidate_dirs(root: &Path) -> Result<Vec<TaskDir>> {
-    let mut dirs = subdirs(root)?
+/// Every candidate task directory, sorted by id.
+fn candidate_dirs(ledger: &Ledger) -> Result<Vec<TaskDir>> {
+    let projects = match &ledger.config.project {
+        Some(project) => vec![(project.clone(), ledger.root.clone())],
+        None => subdirs(&ledger.root)?,
+    };
+    let mut dirs = projects
         .into_iter()
         .map(|(project, project_path)| {
             subdirs(&project_path).map(|slugs| {
                 slugs
                     .into_iter()
                     .map(|(slug, dir)| TaskDir {
-                        id: format!("{project}/{slug}"),
+                        id: ledger.task_id(&project, &slug),
                         project: project.clone(),
                         slug,
                         dir,
@@ -78,19 +84,18 @@ fn candidate_dirs(root: &Path) -> Result<Vec<TaskDir>> {
     Ok(dirs)
 }
 
-/// All `<project>/<slug>/` dirs (two levels, ignored names skipped) that contain
-/// `task.md`, sorted by id.
-pub fn task_dirs(root: &Path) -> Result<Vec<TaskDir>> {
-    Ok(candidate_dirs(root)?
+/// All task dirs (ignored names skipped) that contain `task.md`, sorted by id.
+pub fn task_dirs(ledger: &Ledger) -> Result<Vec<TaskDir>> {
+    Ok(candidate_dirs(ledger)?
         .into_iter()
         .filter(TaskDir::has_task_file)
         .collect())
 }
 
-/// `<project>/<slug>/` dirs without `task.md` but with any of
+/// Task dirs without `task.md` but with any of
 /// `input.md`/`proposal.md`/`design.md`, sorted by id.
-pub fn orphan_dirs(root: &Path) -> Result<Vec<TaskDir>> {
-    Ok(candidate_dirs(root)?
+pub fn orphan_dirs(ledger: &Ledger) -> Result<Vec<TaskDir>> {
+    Ok(candidate_dirs(ledger)?
         .into_iter()
         .filter(|d| !d.has_task_file() && d.has_artifact())
         .collect())
@@ -99,7 +104,18 @@ pub fn orphan_dirs(root: &Path) -> Result<Vec<TaskDir>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::root::Config;
     use std::fs;
+
+    fn ledger(root: &Path, project: Option<&str>) -> Ledger {
+        Ledger {
+            root: root.to_path_buf(),
+            config: Config {
+                project: project.map(str::to_string),
+                ..Config::default()
+            },
+        }
+    }
 
     fn create_file(path: &Path) -> std::io::Result<()> {
         if let Some(parent) = path.parent() {
@@ -122,11 +138,11 @@ mod tests {
         create_file(&root.join("platform/notes.md")).unwrap();
         fs::create_dir_all(root.join("platform/empty")).unwrap();
 
-        let tasks = task_dirs(root).unwrap();
+        let tasks = task_dirs(&ledger(root, None)).unwrap();
         let task_ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(task_ids, vec!["ingest/2026-09-12-cdc"]);
 
-        let orphans = orphan_dirs(root).unwrap();
+        let orphans = orphan_dirs(&ledger(root, None)).unwrap();
         let orphan_ids: Vec<String> = orphans.iter().map(|o| o.id.clone()).collect();
         assert_eq!(orphan_ids, vec!["platform/2026-08-03-ci"]);
     }
@@ -140,7 +156,7 @@ mod tests {
         create_file(&root.join("alpha/2026-09-12-a/task.md")).unwrap();
         create_file(&root.join("beta/2026-01-01-z/task.md")).unwrap();
 
-        let tasks = task_dirs(root).unwrap();
+        let tasks = task_dirs(&ledger(root, None)).unwrap();
         let task_ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(
             task_ids,
@@ -163,11 +179,33 @@ mod tests {
         create_file(&root.join("p4/multiple/proposal.md")).unwrap();
         create_file(&root.join("p4/multiple/design.md")).unwrap();
 
-        let orphans = orphan_dirs(root).unwrap();
+        let orphans = orphan_dirs(&ledger(root, None)).unwrap();
         let orphan_ids: Vec<String> = orphans.iter().map(|o| o.id.clone()).collect();
         assert_eq!(
             orphan_ids,
             vec!["p1/proposal", "p2/design", "p3/input", "p4/multiple"]
         );
+    }
+
+    #[test]
+    fn flat_ledger_scans_root_level_task_dirs() {
+        let tmpdir = tempfile::TempDir::new().unwrap();
+        let root = tmpdir.path();
+
+        create_file(&root.join("_templates/default/task.md")).unwrap();
+        create_file(&root.join("2026-10-19-plan/task.md")).unwrap();
+        create_file(&root.join("2026-10-20-draft/proposal.md")).unwrap();
+        create_file(&root.join("nested/2026-10-21-x/task.md")).unwrap();
+
+        let flat = ledger(root, Some("anki-helpers"));
+        let tasks = task_dirs(&flat).unwrap();
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].id, "2026-10-19-plan");
+        assert_eq!(tasks[0].project, "anki-helpers");
+        assert_eq!(tasks[0].dir, root.join("2026-10-19-plan"));
+
+        let orphans = orphan_dirs(&flat).unwrap();
+        let orphan_ids: Vec<String> = orphans.iter().map(|o| o.id.clone()).collect();
+        assert_eq!(orphan_ids, vec!["2026-10-20-draft"]);
     }
 }

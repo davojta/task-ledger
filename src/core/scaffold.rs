@@ -107,8 +107,8 @@ pub fn create(ledger: &Ledger, new: &NewTask) -> Result<TaskDir> {
     } else {
         new.slug.clone()
     };
-    let id = format!("{}/{slug}", new.project);
-    let project_dir = ledger.root.join(&new.project);
+    let id = ledger.task_id(&new.project, &slug);
+    let project_dir = ledger.project_dir(&new.project);
     let dir = project_dir.join(&slug);
     if dir.exists() {
         return Err(LedgerError::Conflict(format!("{id} already exists")));

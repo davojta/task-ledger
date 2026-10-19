@@ -26,6 +26,9 @@ Create a `ledger.toml` at the vault/repo root:
 ```toml
 # Optional; relative to ledger root, defaults to _templates
 templates_dir = "_templates"
+
+# Optional; single-project (flat) layout, see below
+# project = "my-repo"
 ```
 
 Task layout:
@@ -39,6 +42,15 @@ Task layout:
 ├── _templates/            # optional
 │   └── default/
 │       └── task.md        # template for `ledger new`
+```
+
+Flat layout: for a ledger that lives inside one repo (e.g. `docs/tasks/`), set `project = "<name>"` in `ledger.toml`. Tasks then sit directly under the root at `<root>/<slug>/task.md`, the task ID is `<slug>`, every task gets `project: <name>`, and `ledger new <slug>` takes no project prefix.
+
+```
+docs/tasks/
+├── ledger.toml            # project = "anki-helpers"
+└── 2026-10-19-grand-plan/
+    └── task.md            # id: 2026-10-19-grand-plan
 ```
 
 Templates: `ledger new --template <name>` copies every `.md` file from `_templates/<name>/` (must include `task.md`) and replaces `{{id}}`, `{{title}}`, `{{project}}`, `{{date}}`, `{{status}}`. Without `_templates/default/`, built-in `task.md`, `input.md`, `proposal.md` and `design.md` are used; `proposal.md` and `design.md` start empty, so a new task's derived stage is `input`.
@@ -117,7 +129,7 @@ idea ──► backlog ──► active ──► review ──► done
 | `ledger ls [--all] [--project P] [--status S] [--sort id\|created\|updated\|status]` | List tasks (hides done/dropped unless `--all`) |
 | `ledger show <task>` | Show task record and artifact presence |
 | `ledger status <task> <status>` (alias `mv`) | Change task status with optional `--note "..."` |
-| `ledger new <project>/<slug> [--title "..."]` | Create a task from template |
+| `ledger new <project>/<slug> [--title "..."]` | Create a task from template (`<slug>` only in a flat ledger) |
 | `ledger check [--fix]` | Validate all task records, report orphans |
 | `ledger schema` | Print JSON Schema of `--json` output |
 
@@ -178,7 +190,7 @@ src/
 │   └── ls.rs show.rs status.rs new.rs check.rs schema.rs
 └── core/                # never prints or exits; returns Result<_, LedgerError>
     ├── root.rs          # ledger.toml discovery and config
-    ├── scan.rs          # <project>/<slug> task and orphan discovery
+    ├── scan.rs          # task and orphan discovery (nested or flat layout)
     ├── resolve.rs       # <task> reference resolution
     ├── record.rs        # task.md parsing, validation, derived stage
     ├── edit.rs          # line-level frontmatter edits, atomic writes

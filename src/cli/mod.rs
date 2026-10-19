@@ -112,7 +112,7 @@ pub struct StatusArgs {
 
 #[derive(Args)]
 pub struct NewArgs {
-    /// `<project>/<slug>`
+    /// `<project>/<slug>`, or `<slug>` when ledger.toml sets `project`
     pub name: String,
     #[arg(long)]
     pub title: Option<String>,

@@ -22,7 +22,7 @@ The CLI SHALL locate the ledger root by walking up from the current directory to
 - **THEN** the CLI exits with code 3 and reports that no ledger root was found
 
 ### Requirement: Configuration file
-`ledger.toml` SHALL be valid TOML. An empty file SHALL be valid. The optional key `templates_dir` (default `_templates`) SHALL name the templates directory relative to the root. Unknown keys SHALL be ignored.
+`ledger.toml` SHALL be valid TOML. An empty file SHALL be valid. The optional key `templates_dir` (default `_templates`) SHALL name the templates directory relative to the root. The optional key `project` SHALL switch the ledger to the flat layout (see Task layout) and SHALL follow the project name rules; an invalid value SHALL exit with code 4 naming the file. Unknown keys SHALL be ignored.
 
 #### Scenario: Empty config
 - **WHEN** `ledger.toml` is empty
@@ -35,6 +35,8 @@ The CLI SHALL locate the ledger root by walking up from the current directory to
 ### Requirement: Task layout
 A task SHALL be a directory at exactly `<root>/<project>/<slug>/`. Directories whose name starts with `.` or `_` SHALL be ignored at both levels. The task ID SHALL be `<project>/<slug>`. A task directory is a ledger task only when it contains `task.md`.
 
+When `ledger.toml` sets `project`, the ledger SHALL use the flat layout instead: a task SHALL be a directory at exactly `<root>/<slug>/`, its project SHALL be the configured `project`, and its task ID SHALL be `<slug>`.
+
 #### Scenario: Ignored directories
 - **WHEN** the root contains `_templates/default/task.md` and `.git/`
 - **THEN** neither appears as a task
@@ -42,6 +44,10 @@ A task SHALL be a directory at exactly `<root>/<project>/<slug>/`. Directories w
 #### Scenario: Task identified by path
 - **WHEN** `<root>/ingest/2026-09-12-cdc-backfill/task.md` exists
 - **THEN** a task with ID `ingest/2026-09-12-cdc-backfill` is listed
+
+#### Scenario: Flat layout
+- **WHEN** `ledger.toml` contains `project = "anki-helpers"` and `<root>/2026-10-19-plan/task.md` exists
+- **THEN** the task has ID `2026-10-19-plan` and project `anki-helpers`
 
 ### Requirement: Task reference resolution
 Commands taking `<task>` SHALL resolve it, in order, as: (1) an exact task ID; (2) a filesystem path (absolute or relative to the current directory, e.g. `.`) pointing to a task directory; (3) a slug suffix — a task whose slug equals the reference or ends with `-<reference>`. If the first matching step yields more than one task, the CLI SHALL fail as ambiguous.

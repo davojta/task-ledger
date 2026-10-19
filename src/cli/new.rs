@@ -5,7 +5,7 @@ use crate::core::{date, record};
 
 pub fn run(args: &NewArgs, json: bool, env: &Env) -> Result<u8> {
     let ledger = env.ledger()?;
-    let (project, slug) = split_name(&args.name)?;
+    let (project, slug) = split_name(&args.name, ledger.config.project.as_deref())?;
     let new = NewTask {
         project: project.to_string(),
         slug: slug.to_string(),
@@ -29,10 +29,17 @@ pub fn run(args: &NewArgs, json: bool, env: &Env) -> Result<u8> {
     Ok(0)
 }
 
-fn split_name(name: &str) -> Result<(&str, &str)> {
-    name.split_once('/')
-        .filter(|(_, slug)| !slug.contains('/'))
-        .ok_or_else(|| {
-            LedgerError::Invalid(format!("invalid name '{name}': expected <project>/<slug>"))
-        })
+/// `<project>/<slug>`; just `<slug>` in a flat ledger (`project` in ledger.toml).
+fn split_name<'a>(name: &'a str, flat_project: Option<&'a str>) -> Result<(&'a str, &'a str)> {
+    match flat_project {
+        Some(project) => (!name.contains('/')).then_some((project, name)),
+        None => name.split_once('/').filter(|(_, slug)| !slug.contains('/')),
+    }
+    .ok_or_else(|| {
+        let expected = match flat_project {
+            Some(project) => format!("<slug> (ledger.toml sets project = \"{project}\")"),
+            None => "<project>/<slug>".to_string(),
+        };
+        LedgerError::Invalid(format!("invalid name '{name}': expected {expected}"))
+    })
 }
