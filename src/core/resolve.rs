@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::core::error::{LedgerError, Result};
+use crate::core::root::Ledger;
 use crate::core::scan::{task_dirs, TaskDir};
 
 /// Resolve a `<task>` reference, first matching step wins:
@@ -9,8 +10,8 @@ use crate::core::scan::{task_dirs, TaskDir};
 ///
 /// More than one match in the winning step = Ambiguous (candidates = ids);
 /// no match = NotFound.
-pub fn resolve(root: &Path, cwd: &Path, reference: &str) -> Result<TaskDir> {
-    let tasks = task_dirs(root)?;
+pub fn resolve(ledger: &Ledger, cwd: &Path, reference: &str) -> Result<TaskDir> {
+    let tasks = task_dirs(ledger)?;
     let target = cwd.join(reference).canonicalize().ok();
     let suffix = format!("-{reference}");
 
@@ -47,7 +48,15 @@ fn single(found: Vec<&TaskDir>, reference: &str) -> Result<TaskDir> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::root::Config;
     use std::fs;
+
+    fn ledger(root: &Path) -> Ledger {
+        Ledger {
+            root: root.to_path_buf(),
+            config: Config::default(),
+        }
+    }
 
     fn create_file(path: &Path) -> std::io::Result<()> {
         if let Some(parent) = path.parent() {
@@ -65,7 +74,7 @@ mod tests {
         create_file(&root.join("project1/2026-09-12-task-a/task.md")).unwrap();
         create_file(&root.join("project1/2026-09-12-task-b/task.md")).unwrap();
 
-        let resolved = resolve(root, root, "project1/2026-09-12-task-a").unwrap();
+        let resolved = resolve(&ledger(root), root, "project1/2026-09-12-task-a").unwrap();
         assert_eq!(resolved.id, "project1/2026-09-12-task-a");
     }
 
@@ -76,7 +85,7 @@ mod tests {
 
         create_file(&root.join("ingest/2026-09-12-cdc-backfill/task.md")).unwrap();
 
-        let resolved = resolve(root, root, "ingest/2026-09-12-cdc-backfill").unwrap();
+        let resolved = resolve(&ledger(root), root, "ingest/2026-09-12-cdc-backfill").unwrap();
         assert_eq!(resolved.id, "ingest/2026-09-12-cdc-backfill");
     }
 
@@ -88,7 +97,7 @@ mod tests {
 
         create_file(&task_dir.join("task.md")).unwrap();
 
-        let resolved = resolve(root, &task_dir, ".").unwrap();
+        let resolved = resolve(&ledger(root), &task_dir, ".").unwrap();
         assert_eq!(resolved.id, "project/2026-09-12-task");
     }
 
@@ -99,7 +108,7 @@ mod tests {
 
         create_file(&root.join("ingest/2026-09-12-cdc-backfill/task.md")).unwrap();
 
-        let resolved = resolve(root, root, "2026-09-12-cdc-backfill").unwrap();
+        let resolved = resolve(&ledger(root), root, "2026-09-12-cdc-backfill").unwrap();
         assert_eq!(resolved.id, "ingest/2026-09-12-cdc-backfill");
     }
 
@@ -110,7 +119,7 @@ mod tests {
 
         create_file(&root.join("ingest/2026-09-12-cdc-backfill/task.md")).unwrap();
 
-        let resolved = resolve(root, root, "cdc-backfill").unwrap();
+        let resolved = resolve(&ledger(root), root, "cdc-backfill").unwrap();
         assert_eq!(resolved.id, "ingest/2026-09-12-cdc-backfill");
     }
 
@@ -121,7 +130,7 @@ mod tests {
 
         create_file(&root.join("ingest/2026-09-12-cdc-backfill/task.md")).unwrap();
 
-        let result = resolve(root, root, "ackfill");
+        let result = resolve(&ledger(root), root, "ackfill");
         assert!(matches!(result, Err(LedgerError::NotFound(_))));
     }
 
@@ -133,7 +142,7 @@ mod tests {
         create_file(&root.join("ingest/2026-01-01-ci-cache/task.md")).unwrap();
         create_file(&root.join("platform/2026-02-02-ci-cache/task.md")).unwrap();
 
-        let result = resolve(root, root, "ci-cache");
+        let result = resolve(&ledger(root), root, "ci-cache");
         assert!(matches!(result, Err(LedgerError::Ambiguous { .. })));
 
         if let Err(LedgerError::Ambiguous { candidates, .. }) = result {
@@ -150,7 +159,7 @@ mod tests {
 
         create_file(&root.join("project1/2026-09-12-task/task.md")).unwrap();
 
-        let result = resolve(root, root, "nonexistent");
+        let result = resolve(&ledger(root), root, "nonexistent");
         assert!(matches!(result, Err(LedgerError::NotFound(_))));
     }
 
@@ -162,7 +171,7 @@ mod tests {
         create_file(&root.join("alpha/2026-09-12-exact/task.md")).unwrap();
         create_file(&root.join("beta/2026-01-01-exact-other/task.md")).unwrap();
 
-        let resolved = resolve(root, root, "alpha/2026-09-12-exact").unwrap();
+        let resolved = resolve(&ledger(root), root, "alpha/2026-09-12-exact").unwrap();
         assert_eq!(resolved.id, "alpha/2026-09-12-exact");
     }
 
@@ -175,7 +184,7 @@ mod tests {
         create_file(&root.join("beta/2026-01-01-target-other/task.md")).unwrap();
 
         let alpha_dir = root.join("alpha");
-        let resolved = resolve(root, &alpha_dir, "2026-09-12-target").unwrap();
+        let resolved = resolve(&ledger(root), &alpha_dir, "2026-09-12-target").unwrap();
         assert_eq!(resolved.id, "alpha/2026-09-12-target");
     }
 }

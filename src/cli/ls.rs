@@ -64,7 +64,7 @@ fn table(tasks: &[Task]) -> String {
 
 pub fn run(args: &LsArgs, json: bool, env: &Env) -> Result<u8> {
     let ledger = env.ledger()?;
-    let mut tasks: Vec<Task> = task_dirs(&ledger.root)?
+    let mut tasks: Vec<Task> = task_dirs(&ledger)?
         .iter()
         .filter_map(|dir| match load_task(dir) {
             Ok(task) => Some(task),

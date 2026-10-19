@@ -40,7 +40,7 @@ fn render(task: &Task) -> String {
 
 pub fn run(args: &ShowArgs, json: bool, env: &Env) -> Result<u8> {
     let ledger = env.ledger()?;
-    let dir = resolve(&ledger.root, &env.cwd, &args.task)?;
+    let dir = resolve(&ledger, &env.cwd, &args.task)?;
     let task = load_task(&dir)?;
     if json {
         print_json(&task_envelope(&task));

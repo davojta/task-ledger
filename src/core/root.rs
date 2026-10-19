@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use crate::core::error::{LedgerError, Result};
+use crate::core::scaffold::validate_name;
 
 pub const CONFIG_FILE: &str = "ledger.toml";
 
@@ -10,12 +11,16 @@ pub const CONFIG_FILE: &str = "ledger.toml";
 #[serde(default)]
 pub struct Config {
     pub templates_dir: String,
+    /// Single-project (flat) layout: tasks live at `<root>/<slug>/` and all
+    /// belong to this project. Unset = `<root>/<project>/<slug>/`.
+    pub project: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
             templates_dir: "_templates".to_string(),
+            project: None,
         }
     }
 }
@@ -24,6 +29,24 @@ impl Default for Config {
 pub struct Ledger {
     pub root: PathBuf,
     pub config: Config,
+}
+
+impl Ledger {
+    /// `<slug>` in a flat ledger, `<project>/<slug>` otherwise.
+    pub fn task_id(&self, project: &str, slug: &str) -> String {
+        match self.config.project {
+            Some(_) => slug.to_string(),
+            None => format!("{project}/{slug}"),
+        }
+    }
+
+    /// Directory holding the project's task dirs: the root in a flat ledger.
+    pub fn project_dir(&self, project: &str) -> PathBuf {
+        match self.config.project {
+            Some(_) => self.root.clone(),
+            None => self.root.join(project),
+        }
+    }
 }
 
 /// Find the ledger root: `env_root` when given (must contain `ledger.toml`),
@@ -65,8 +88,13 @@ pub fn load_config(root: &Path) -> Result<Config> {
         return Ok(Config::default());
     }
 
-    toml::from_str(&contents)
-        .map_err(|e| LedgerError::Invalid(format!("{}: {}", config_path.display(), e)))
+    let invalid =
+        |message: String| LedgerError::Invalid(format!("{}: {message}", config_path.display()));
+    let config: Config = toml::from_str(&contents).map_err(|e| invalid(e.to_string()))?;
+    if let Some(project) = &config.project {
+        validate_name(project).map_err(|e| invalid(e.to_string()))?;
+    }
+    Ok(config)
 }
 
 pub fn discover(cwd: &Path, env_root: Option<&Path>) -> Result<Ledger> {
@@ -178,6 +206,37 @@ mod tests {
 
         let config = result.unwrap();
         assert_eq!(config.templates_dir, "tpl");
+    }
+
+    #[test]
+    fn project_setting_enables_flat_layout() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+        std::fs::write(root.join(CONFIG_FILE), b"project = \"anki-helpers\"\n").unwrap();
+
+        let config = load_config(root).unwrap();
+        assert_eq!(config.project.as_deref(), Some("anki-helpers"));
+
+        let ledger = Ledger {
+            root: root.to_path_buf(),
+            config,
+        };
+        assert_eq!(
+            ledger.task_id("anki-helpers", "2026-10-19-x"),
+            "2026-10-19-x"
+        );
+        assert_eq!(ledger.project_dir("anki-helpers"), root);
+    }
+
+    #[test]
+    fn invalid_project_name_rejected() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+        std::fs::write(root.join(CONFIG_FILE), b"project = \"Anki Helpers\"\n").unwrap();
+
+        let err = load_config(root).unwrap_err();
+        assert_eq!(err.exit_code(), 4);
+        assert!(err.to_string().contains("ledger.toml"));
     }
 
     #[test]

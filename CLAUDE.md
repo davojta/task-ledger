@@ -44,7 +44,7 @@ src/
 │   └── ls.rs show.rs status.rs new.rs check.rs schema.rs
 └── core/                # never prints or exits; returns Result<_, LedgerError>
     ├── root.rs          # ledger.toml discovery and config
-    ├── scan.rs          # <project>/<slug> task and orphan discovery
+    ├── scan.rs          # task and orphan discovery (nested or flat layout)
     ├── resolve.rs       # <task> reference resolution
     ├── record.rs        # task.md parsing, validation, derived stage
     ├── edit.rs          # line-level frontmatter edits, atomic writes

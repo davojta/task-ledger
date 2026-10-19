@@ -7,7 +7,7 @@ Creates new task folders with a valid `task.md` and starter artifacts from user-
 ## Requirements
 
 ### Requirement: Create task
-`ledger new <project>/<slug>` SHALL create `<root>/<project>/<YYYY-MM-DD>-<slug>/` using today's date, unless `--no-date-prefix` is given. `<project>` and `<slug>` SHALL be non-empty, contain only lowercase letters, digits and `-`, and SHALL NOT start with `.` or `_`. The project directory SHALL be created if missing.
+`ledger new <project>/<slug>` SHALL create `<root>/<project>/<YYYY-MM-DD>-<slug>/` using today's date, unless `--no-date-prefix` is given. `<project>` and `<slug>` SHALL be non-empty, contain only lowercase letters, digits and `-`, and SHALL NOT start with `.` or `_`. The project directory SHALL be created if missing. In a flat ledger (`project` set in `ledger.toml`) the name SHALL be `<slug>` only, the task SHALL be created at `<root>/<YYYY-MM-DD>-<slug>/` with the configured project, and a name containing `/` SHALL exit with code 4.
 
 #### Scenario: New task with date prefix
 - **WHEN** the user runs `ledger new ingest/cdc-backfill --title "CDC backfill"` on 2026-09-12

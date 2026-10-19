@@ -7,7 +7,7 @@ use crate::core::{date, edit, resolve};
 
 pub fn run(args: &StatusArgs, json: bool, env: &Env) -> Result<u8> {
     let ledger = env.ledger()?;
-    let dir = resolve::resolve(&ledger.root, &env.cwd, &args.task)?;
+    let dir = resolve::resolve(&ledger, &env.cwd, &args.task)?;
     let task = record::load_task(&dir)?;
     let from = task.record.status;
 

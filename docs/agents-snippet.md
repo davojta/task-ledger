@@ -4,7 +4,7 @@ Find tasks with `ledger ls --json` (add `--all` for done/dropped); one task: `le
 
 Change status only via `ledger status <task> <status>` (alias `mv`). Statuses: idea→backlog→active→review→done; review→active; any non-terminal→dropped; done/dropped→backlog with `--reopen`; `--force` overrides. Use `--note "text"` to record intent.
 
-Create tasks with `ledger new <project>/<slug> --title "..."`.
+Create tasks with `ledger new <project>/<slug> --title "..."` (just `<slug>` when `ledger.toml` sets `project`).
 
 Never move or rename task folders; never hand-edit `status` or `history` in task.md.
 
